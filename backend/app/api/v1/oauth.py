@@ -5,7 +5,7 @@ Handles OAuth authentication flows for various providers including
 Google, GitHub, and Discord.
 """
 
-from typing import Dict, Optional
+from typing import Dict
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status

@@ -54,8 +54,8 @@ const customJestConfig = {
     '!src/app/**/*.{js,jsx,ts,tsx}', // Exclude Next.js app directory pages
   ],
   
-  // Coverage thresholds
-  coverageThresholds: {
+  // Coverage threshold
+  coverageThreshold: {
     global: {
       branches: 70,
       functions: 70,

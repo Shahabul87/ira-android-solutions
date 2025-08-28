@@ -7,7 +7,6 @@ Should be run after database migration.
 
 import asyncio
 from datetime import datetime
-from typing import List
 
 import structlog
 from passlib.context import CryptContext
@@ -396,11 +395,11 @@ async def seed_database() -> None:
             logger.info(f"Created {len(roles)} roles")
             
             # Create admin user
-            admin_user = await create_admin_user(session, roles)
+            await create_admin_user(session, roles)
             
             # Create test user (only in development)
             if settings.ENVIRONMENT == "development":
-                test_user = await create_test_user(session, roles)
+                await create_test_user(session, roles)
             
             # Commit all changes
             await session.commit()

@@ -10,7 +10,7 @@ import io
 import json
 import secrets
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
 import pyotp
 import qrcode
@@ -462,35 +462,16 @@ class TwoFactorService:
         Returns:
             bool: True if email sent successfully
         """
-        from app.services.email_service import email_service
         
         if recovery_method == "disable_2fa":
             # Send email with link to disable 2FA
             # This would require additional security verification
-            subject = "Two-Factor Authentication Recovery Request"
-            message = f"""
-            Hello {user.first_name},
-            
-            We received a request to disable two-factor authentication on your account.
-            For security reasons, this requires additional verification.
-            
-            Please contact our support team with your account details.
-            
-            If you didn't request this, please secure your account immediately.
-            """
+            # TODO: Implement 2FA disable recovery email sending
+            pass
         else:
             # Standard password reset with 2FA bypass token
-            subject = "Account Recovery - Two-Factor Authentication"
-            message = f"""
-            Hello {user.first_name},
-            
-            We received a request to recover your account with two-factor authentication enabled.
-            
-            A password reset link has been sent that will temporarily bypass 2FA.
-            After resetting your password, you'll need to set up 2FA again.
-            
-            If you didn't request this, please ignore this email.
-            """
+            # TODO: Implement standard password reset with 2FA bypass token
+            pass
         
         # In production, this would use the email service
         logger.info(

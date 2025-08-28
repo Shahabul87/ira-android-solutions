@@ -6,9 +6,9 @@ Google, GitHub, and Discord with proper type safety.
 """
 
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Optional, Tuple
+from typing import Optional, Tuple
 
 import httpx
 import structlog

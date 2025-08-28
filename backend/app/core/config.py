@@ -7,7 +7,7 @@ Loads configuration from environment variables with proper validation.
 
 import secrets
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional
 
 from pydantic import (
     AnyHttpUrl,

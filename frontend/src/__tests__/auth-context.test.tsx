@@ -203,8 +203,10 @@ describe('AuthContext', () => {
       const registerRequest: RegisterRequest = {
         email: 'new@example.com',
         password: 'SecurePassword123!',
+        confirm_password: 'SecurePassword123!',
         first_name: 'New',
         last_name: 'User',
+        agree_to_terms: true,
       };
 
       (AuthAPI.register as jest.Mock).mockResolvedValue({
@@ -243,8 +245,10 @@ describe('AuthContext', () => {
       const registerRequest: RegisterRequest = {
         email: 'existing@example.com',
         password: 'SecurePassword123!',
+        confirm_password: 'SecurePassword123!',
         first_name: 'New',
         last_name: 'User',
+        agree_to_terms: true,
       };
 
       (AuthAPI.register as jest.Mock).mockResolvedValue({

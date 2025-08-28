@@ -44,35 +44,17 @@ export function RegisterForm({ onSuccess }: RegisterFormProps): JSX.Element {
   const passwordValue = form.watch('password');
 
   const onSubmit = handleSubmit(async (data: RegisterFormData): Promise<boolean> => {
-    console.log('Registration form submitted with data:', data);
-    try {
-      const result = await registerUser({
-        email: data.email,
-        password: data.password,
-        confirm_password: data.confirmPassword,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        agree_to_terms: data.terms,
-      });
-      console.log('Registration result:', result);
-      return result;
-    } catch (error) {
-      console.error('Registration error:', error);
-      return false;
-    }
+    return await registerUser({
+      email: data.email,
+      password: data.password,
+      confirm_password: data.confirmPassword,
+      first_name: data.first_name,
+      last_name: data.last_name,
+      agree_to_terms: data.terms,
+    });
   });
 
   const formIsValid = isFormValid(form, ['email', 'password', 'confirmPassword', 'first_name', 'last_name', 'terms']);
-  
-  // Debug logging
-  console.log('Form validation state:', {
-    formIsValid,
-    isLoading,
-    isSubmitting,
-    buttonDisabled: !formIsValid || isLoading || isSubmitting,
-    formValues: form.watch(),
-    formErrors: form.formState.errors
-  });
 
   return (
     <Card className='w-full max-w-md mx-auto'>

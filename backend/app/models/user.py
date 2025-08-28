@@ -11,7 +11,6 @@ from uuid import uuid4
 
 from sqlalchemy import (
     Boolean,
-    Column,
     DateTime,
     ForeignKey, 
     Integer,
@@ -146,10 +145,6 @@ class User(Base):
     def __repr__(self) -> str:
         return f"<User(id={self.id}, email={self.email})>"
     
-    @property
-    def full_name(self) -> str:
-        """Get user's full name."""
-        return f"{self.first_name} {self.last_name}"
     
     @property
     def is_locked(self) -> bool:

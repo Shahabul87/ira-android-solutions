@@ -8,10 +8,9 @@ password reset emails, and notifications with proper templates.
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Dict, List, Optional
+from typing import Optional
 
 import structlog
-from jinja2 import Environment, Template
 
 from app.core.config import get_settings
 

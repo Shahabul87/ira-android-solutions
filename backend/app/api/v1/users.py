@@ -8,14 +8,13 @@ and user role management.
 from typing import List, Optional
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
 from app.dependencies.auth import (
     CurrentUser,
     get_current_user,
-    require_admin,
     require_permissions,
 )
 from app.schemas.user import UserResponse, UserUpdate, UserListResponse
@@ -148,7 +147,7 @@ async def list_users(
         UserResponse(
             id=f"user-{i}",
             email=f"user{i}@example.com",
-            first_name=f"User",
+            first_name="User",
             last_name=f"{i}",
             is_active=True,
             is_verified=True,

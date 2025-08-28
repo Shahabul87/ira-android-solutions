@@ -5,14 +5,13 @@ Handles user authentication including login, registration,
 token refresh, password reset, and OAuth flows.
 """
 
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
-from app.services.email_service import email_service
 from app.services.auth_service import (
     AccountLockedError,
     AuthService,

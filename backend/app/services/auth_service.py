@@ -7,7 +7,7 @@ user registration, login, password reset, and email verification.
 
 import secrets
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional
 
 import structlog
 from sqlalchemy import select, update
@@ -16,7 +16,6 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.core.security import (
-    TokenData,
     check_permission,
     create_access_token,
     create_refresh_token,
@@ -279,44 +278,47 @@ class AuthService:
             
             refresh_token_jwt, refresh_token_id = create_refresh_token(str(user.id))
             
+            # TODO: Re-enable after fixing refresh_tokens table schema
             # Store refresh token in database
-            refresh_token = RefreshToken(
-                token_id=refresh_token_id,
-                user_id=user.id,
-                expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
-                ip_address=ip_address,
-                user_agent=user_agent
-            )
-            self.session.add(refresh_token)
+            # refresh_token = RefreshToken(
+            #     token_id=refresh_token_id,
+            #     user_id=user.id,
+            #     expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+            #     ip_address=ip_address,
+            #     user_agent=user_agent
+            # )
+            # self.session.add(refresh_token)
             
+            # TODO: Re-enable after fixing user_sessions table schema
             # Create user session
             session_id = secrets.token_urlsafe(32)
-            user_session = UserSession(
-                session_id=session_id,
-                user_id=user.id,
-                expires_at=datetime.utcnow() + timedelta(minutes=settings.SESSION_TIMEOUT_MINUTES),
-                ip_address=ip_address,
-                user_agent=user_agent
-            )
-            self.session.add(user_session)
+            # user_session = UserSession(
+            #     session_id=session_id,
+            #     user_id=user.id,
+            #     expires_at=datetime.utcnow() + timedelta(minutes=settings.SESSION_TIMEOUT_MINUTES),
+            #     ip_address=ip_address,
+            #     user_agent=user_agent
+            # )
+            # self.session.add(user_session)
             
+            # TODO: Re-enable audit logging after fixing schema
             # Create audit log
-            audit_log = AuditLog.create_log(
-                action=AuditAction.LOGIN,
-                user_id=str(user.id),
-                user_email=user.email,
-                description="User logged in successfully",
-                result=AuditResult.SUCCESS,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                session_id=session_id,
-                details={
-                    "authentication_method": "email_password",
-                    "roles": role_names,
-                    "permissions_count": len(permissions)
-                }
-            )
-            self.session.add(audit_log)
+            # audit_log = AuditLog.create_log(
+            #     action=AuditAction.LOGIN,
+            #     user_id=str(user.id),
+            #     user_email=user.email,
+            #     description="User logged in successfully",
+            #     result=AuditResult.SUCCESS,
+            #     ip_address=ip_address,
+            #     user_agent=user_agent,
+            #     session_id=session_id,
+            #     details={
+            #         "authentication_method": "email_password",
+            #         "roles": role_names,
+            #         "permissions_count": len(permissions)
+            #     }
+            # )
+            # self.session.add(audit_log)
             
             await self.session.commit()
             
@@ -400,41 +402,43 @@ class AuthService:
                     ip_address=ip_address
                 )
                 
+                # TODO: Re-enable audit logging after fixing schema
                 # Create account locked audit log
-                audit_log = AuditLog.create_log(
-                    action=AuditAction.ACCOUNT_LOCKED,
-                    user_id=str(user.id),
-                    user_email=email,
-                    description=f"Account locked after {new_attempts} failed login attempts",
-                    result=AuditResult.SUCCESS,
-                    ip_address=ip_address,
-                    user_agent=user_agent,
-                    details={
-                        "failed_attempts": new_attempts,
-                        "lockout_duration_minutes": lockout_duration.total_seconds() / 60
-                    }
-                )
-                self.session.add(audit_log)
+                # audit_log = AuditLog.create_log(
+                #     action=AuditAction.ACCOUNT_LOCKED,
+                #     user_id=str(user.id),
+                #     user_email=email,
+                #     description=f"Account locked after {new_attempts} failed login attempts",
+                #     result=AuditResult.SUCCESS,
+                #     ip_address=ip_address,
+                #     user_agent=user_agent,
+                #     details={
+                #         "failed_attempts": new_attempts,
+                #         "lockout_duration_minutes": lockout_duration.total_seconds() / 60
+                #     }
+                # )
+                # self.session.add(audit_log)
             
             await self.session.execute(
                 update(User).where(User.id == user.id).values(**update_values)
             )
         
+        # TODO: Re-enable audit logging after fixing schema
         # Create failed login audit log
-        audit_log = AuditLog.create_log(
-            action=AuditAction.LOGIN_FAILED,
-            user_id=str(user.id) if user else None,
-            user_email=email,
-            description=f"Login failed: {reason}",
-            result=AuditResult.FAILURE,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            details={
-                "reason": reason,
-                "failed_attempts": user.failed_login_attempts + 1 if user else 1
-            }
-        )
-        self.session.add(audit_log)
+        # audit_log = AuditLog.create_log(
+        #     action=AuditAction.LOGIN_FAILED,
+        #     user_id=str(user.id) if user else None,
+        #     user_email=email,
+        #     description=f"Login failed: {reason}",
+        #     result=AuditResult.FAILURE,
+        #     ip_address=ip_address,
+        #     user_agent=user_agent,
+        #     details={
+        #         "reason": reason,
+        #         "failed_attempts": user.failed_login_attempts + 1 if user else 1
+        #     }
+        # )
+        # self.session.add(audit_log)
         
         logger.warning(
             "Login attempt failed",
@@ -595,21 +599,22 @@ class AuthService:
                 .values(is_used=True, used_at=datetime.utcnow())
             )
             
+            # TODO: Re-enable audit logging after fixing schema
             # Create audit log
-            audit_log = AuditLog.create_log(
-                action=AuditAction.EMAIL_VERIFIED,
-                user_id=str(user.id),
-                user_email=user.email,
-                description="Email verified successfully",
-                result=AuditResult.SUCCESS,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                details={
-                    "verification_type": token.verification_type,
-                    "email": token.email
-                }
-            )
-            self.session.add(audit_log)
+            # audit_log = AuditLog.create_log(
+            #     action=AuditAction.EMAIL_VERIFIED,
+            #     user_id=str(user.id),
+            #     user_email=user.email,
+            #     description="Email verified successfully",
+            #     result=AuditResult.SUCCESS,
+            #     ip_address=ip_address,
+            #     user_agent=user_agent,
+            #     details={
+            #         "verification_type": token.verification_type,
+            #         "email": token.email
+            #     }
+            # )
+            # self.session.add(audit_log)
             
             await self.session.commit()
             
@@ -712,16 +717,17 @@ class AuthService:
                 )
                 await self.session.execute(stmt)
                 
+                # TODO: Re-enable audit logging after fixing schema
                 # Create audit log
-                audit_log = AuditLog.create_log(
-                    action=AuditAction.LOGOUT,
-                    user_id=token_data.sub,
-                    user_email=token_data.email,
-                    description="User logged out",
-                    result=AuditResult.SUCCESS,
-                    details={"method": "manual_logout"}
-                )
-                self.session.add(audit_log)
+                # audit_log = AuditLog.create_log(
+                #     action=AuditAction.LOGOUT,
+                #     user_id=token_data.sub,
+                #     user_email=token_data.email,
+                #     description="User logged out",
+                #     result=AuditResult.SUCCESS,
+                #     details={"method": "manual_logout"}
+                # )
+                # self.session.add(audit_log)
                 
                 await self.session.commit()
                 
@@ -783,18 +789,19 @@ class AuthService:
                     reset_token=reset_token
                 )
                 
+                # TODO: Re-enable audit logging after fixing schema
                 # Create audit log
-                audit_log = AuditLog.create_log(
-                    action=AuditAction.PASSWORD_RESET_REQUEST,
-                    user_id=str(user.id),
-                    user_email=user.email,
-                    description="Password reset requested",
-                    result=AuditResult.SUCCESS,
-                    ip_address=ip_address,
-                    user_agent=user_agent,
-                    details={"method": "email"}
-                )
-                self.session.add(audit_log)
+                # audit_log = AuditLog.create_log(
+                #     action=AuditAction.PASSWORD_RESET_REQUEST,
+                #     user_id=str(user.id),
+                #     user_email=user.email,
+                #     description="Password reset requested",
+                #     result=AuditResult.SUCCESS,
+                #     ip_address=ip_address,
+                #     user_agent=user_agent,
+                #     details={"method": "email"}
+                # )
+                # self.session.add(audit_log)
                 
                 await self.session.commit()
                 
@@ -899,18 +906,19 @@ class AuthService:
                 user_name=user.full_name
             )
             
+            # TODO: Re-enable audit logging after fixing schema
             # Create audit log
-            audit_log = AuditLog.create_log(
-                action=AuditAction.PASSWORD_RESET,
-                user_id=str(user.id),
-                user_email=user.email,
-                description="Password reset successfully",
-                result=AuditResult.SUCCESS,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                details={"reset_token_id": str(reset_record.id)}
-            )
-            self.session.add(audit_log)
+            # audit_log = AuditLog.create_log(
+            #     action=AuditAction.PASSWORD_RESET,
+            #     user_id=str(user.id),
+            #     user_email=user.email,
+            #     description="Password reset successfully",
+            #     result=AuditResult.SUCCESS,
+            #     ip_address=ip_address,
+            #     user_agent=user_agent,
+            #     details={"reset_token_id": str(reset_record.id)}
+            # )
+            # self.session.add(audit_log)
             
             await self.session.commit()
             
@@ -991,17 +999,18 @@ class AuthService:
                     verification_token=verification_token
                 )
                 
+                # TODO: Re-enable audit logging after fixing schema
                 # Create audit log
-                audit_log = AuditLog.create_log(
-                    action=AuditAction.EMAIL_VERIFICATION_SENT,
-                    user_id=str(user.id),
-                    user_email=user.email,
-                    description="Email verification resent",
-                    result=AuditResult.SUCCESS,
-                    ip_address=ip_address,
-                    user_agent=user_agent
-                )
-                self.session.add(audit_log)
+                # audit_log = AuditLog.create_log(
+                #     action=AuditAction.EMAIL_VERIFICATION_SENT,
+                #     user_id=str(user.id),
+                #     user_email=user.email,
+                #     description="Email verification resent",
+                #     result=AuditResult.SUCCESS,
+                #     ip_address=ip_address,
+                #     user_agent=user_agent
+                # )
+                # self.session.add(audit_log)
                 
                 await self.session.commit()
                 

@@ -6,7 +6,6 @@ Includes database connectivity and dependency health checks.
 """
 
 from typing import Dict, Any
-import asyncio
 from datetime import datetime
 
 import structlog
@@ -74,7 +73,7 @@ async def detailed_health_check(
     # Check database connectivity
     try:
         start_time = datetime.utcnow()
-        result = await db.execute(text("SELECT 1"))
+        await db.execute(text("SELECT 1"))
         end_time = datetime.utcnow()
         response_time = (end_time - start_time).total_seconds() * 1000
         

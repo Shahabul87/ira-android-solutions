@@ -430,7 +430,7 @@ async def request_two_factor_recovery(
     if not user or not user.two_factor_enabled:
         logger.warning(
             "2FA recovery requested for non-existent or non-2FA user",
-            email=email
+            email=request.email
         )
     else:
         try:
@@ -440,12 +440,12 @@ async def request_two_factor_recovery(
             logger.info(
                 "2FA recovery email sent",
                 user_id=user.id,
-                email=email
+                email=request.email
             )
         except Exception as e:
             logger.error(
                 "Failed to send 2FA recovery email",
-                email=email,
+                email=request.email,
                 error=str(e)
             )
     
