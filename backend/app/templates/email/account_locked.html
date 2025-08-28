@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Security Alert - Account Locked - {{ app_name }}{% endblock %}
+
+{% block header_title %}⚠️ Security Alert{% endblock %}
+{% block header_gradient %}#fc8181 0%, #f56565 100%{% endblock %}
+
+{% block content %}
+<h2>Account Temporarily Locked</h2>
+
+<div class="alert alert-danger">
+    <strong>🔐 Your account has been locked</strong><br>
+    We detected {{ failed_attempts }} failed login attempts on your {{ app_name }} account.
+    For your security, we've temporarily locked your account.
+</div>
+
+<p>
+    <strong>Hello {{ user_name }},</strong>
+</p>
+
+<p>
+    Your account will be automatically unlocked at:
+</p>
+
+<div class="code-block" style="text-align: center; font-size: 18px; font-weight: 600; color: #c53030;">
+    {{ locked_until }}
+</div>
+
+<div class="divider"></div>
+
+<h3>What should you do?</h3>
+
+<div style="margin: 20px 0;">
+    <h4 style="color: #2d3748; font-size: 16px; margin-bottom: 10px;">✅ If this was you:</h4>
+    <ul>
+        <li>Wait until the lockout period expires ({{ lockout_duration }} minutes)</li>
+        <li>Make sure you're using the correct password</li>
+        <li>Consider using the <a href="{{ frontend_url }}/auth/forgot-password" style="color: #667eea; font-weight: 600;">"Forgot Password"</a> option to reset your password</li>
+        <li>Check if Caps Lock is on or if you're using the correct keyboard layout</li>
+    </ul>
+</div>
+
+<div style="margin: 20px 0;">
+    <h4 style="color: #2d3748; font-size: 16px; margin-bottom: 10px;">🚨 If this wasn't you:</h4>
+    <ul>
+        <li><strong>Someone may be trying to access your account</strong></li>
+        <li>Reset your password immediately after the lockout expires</li>
+        <li>Enable two-factor authentication for enhanced security</li>
+        <li>Review your recent account activity once you regain access</li>
+        <li>Consider changing passwords on other accounts if you use the same password</li>
+    </ul>
+</div>
+
+<div class="alert alert-warning">
+    <strong>🛡️ Security Recommendation:</strong><br>
+    We strongly recommend enabling two-factor authentication (2FA) on your account. 
+    This adds an extra layer of security and helps prevent unauthorized access even if someone knows your password.
+</div>
+
+<h3>Failed Login Attempt Details:</h3>
+<div class="code-block" style="font-size: 13px;">
+    <strong>Number of attempts:</strong> {{ failed_attempts }}<br>
+    <strong>Last attempt time:</strong> {{ last_attempt_time }}<br>
+    <strong>IP Address:</strong> {{ attempt_ip }}<br>
+    <strong>Location:</strong> {{ attempt_location }}<br>
+    <strong>Browser/Device:</strong> {{ attempt_browser }}
+</div>
+
+<div class="button-container" style="margin-top: 30px;">
+    <a href="{{ frontend_url }}/auth/forgot-password" class="button button-secondary">Reset Password</a>
+</div>
+
+<div class="alert alert-info" style="margin-top: 30px;">
+    <strong>Need immediate assistance?</strong><br>
+    If you believe your account has been compromised or you need urgent help, please 
+    <a href="{{ frontend_url }}/contact" style="color: #2b6cb0; font-weight: 600;">contact our security team</a> immediately.
+</div>
+{% endblock %}
+
+{% block footer_message %}
+This security alert was triggered by multiple failed login attempts on your account. 
+We take your security seriously and will continue monitoring for suspicious activity.
+{% endblock %}

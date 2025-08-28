@@ -1,0 +1,115 @@
+# Docker Compose for Development Environment
+# Minimal setup for local development with hot reload
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: enterprise_auth_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: enterprise_auth_dev
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - dev_network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: enterprise_auth_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - dev_network
+    command: redis-server --appendonly yes
+
+  # FastAPI Backend (Development)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: enterprise_auth_backend_dev
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://dev_user:dev_password@postgres:5432/enterprise_auth_dev
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev_secret_key_change_in_production
+      ENVIRONMENT: development
+      DEBUG: "true"
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - backend_dev_logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - dev_network
+
+  # Next.js Frontend (Development)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: enterprise_auth_frontend_dev
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_APP_NAME=Enterprise Auth Template (Dev)
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    networks:
+      - dev_network
+
+  # pgAdmin for Database Management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: enterprise_auth_pgadmin_dev
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: dev@enterprise-auth.com
+      PGADMIN_DEFAULT_PASSWORD: devpassword
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_dev_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - dev_network
+
+networks:
+  dev_network:
+    driver: bridge
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  pgadmin_dev_data:
+    driver: local
+  backend_dev_logs:
+    driver: local

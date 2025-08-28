@@ -1,0 +1,11 @@
+# Include base requirements
+-r base.txt
+
+# Production Optimizations
+gunicorn==21.2.0
+
+# Monitoring & Observability
+sentry-sdk[fastapi]==1.38.0
+
+# Performance
+orjson==3.9.10  # Faster JSON serialization

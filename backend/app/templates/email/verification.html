@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Verify Your Email - {{ app_name }}{% endblock %}
+
+{% block header_title %}Email Verification{% endblock %}
+
+{% block content %}
+<h2>Welcome to {{ app_name }}, {{ user_name }}!</h2>
+
+<p>
+    Thank you for signing up! We're excited to have you on board. To complete your registration 
+    and unlock all features, please verify your email address.
+</p>
+
+<div class="alert alert-info">
+    <strong>Why verify your email?</strong>
+    <ul style="margin: 10px 0 0; padding-left: 20px;">
+        <li>Ensures your account security</li>
+        <li>Enables password recovery options</li>
+        <li>Allows you to receive important notifications</li>
+    </ul>
+</div>
+
+<div class="button-container">
+    <a href="{{ verification_url }}" class="button">Verify Email Address</a>
+</div>
+
+<p style="text-align: center; color: #718096; font-size: 14px;">
+    Button not working? Copy and paste this link into your browser:
+</p>
+
+<div class="code-block">{{ verification_url }}</div>
+
+<div class="divider"></div>
+
+<div class="alert alert-warning">
+    <strong>Important:</strong> This verification link will expire in <strong>24 hours</strong>. 
+    If the link expires, you can request a new one from the login page.
+</div>
+
+<h3>What happens next?</h3>
+<p>
+    Once you verify your email address, you'll be able to:
+</p>
+<ul>
+    <li>Access your personalized dashboard</li>
+    <li>Configure your account settings</li>
+    <li>Start using all {{ app_name }} features</li>
+</ul>
+
+<p style="margin-top: 30px; color: #718096;">
+    If you didn't create an account with {{ app_name }}, please ignore this email. 
+    No further action is required, and the account will not be activated.
+</p>
+{% endblock %}
+
+{% block footer_message %}
+You received this email because someone signed up for {{ app_name }} using this email address.
+If this wasn't you, you can safely ignore this message.
+{% endblock %}

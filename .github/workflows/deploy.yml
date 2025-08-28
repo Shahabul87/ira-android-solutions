@@ -1,0 +1,419 @@
+name: Deploy Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+
+env:
+  AWS_REGION: us-east-1
+  GCP_REGION: us-central1
+  AZURE_REGION: eastus
+
+jobs:
+  # ==============================================================================
+  # Determine Deployment Environment
+  # ==============================================================================
+  setup:
+    name: Setup Deployment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.determine.outputs.environment }}
+      version: ${{ steps.version.outputs.version }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Determine environment
+        id: determine
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          else
+            echo "environment=development" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Get version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+          fi
+
+  # ==============================================================================
+  # Deploy to Kubernetes
+  # ==============================================================================
+  deploy-kubernetes:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: setup
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    environment: ${{ needs.setup.outputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+      
+      - name: Authenticate to cloud provider
+        run: |
+          # AWS EKS
+          if [[ "${{ secrets.DEPLOY_PROVIDER }}" == "aws" ]]; then
+            aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER_NAME }}
+          
+          # GCP GKE
+          elif [[ "${{ secrets.DEPLOY_PROVIDER }}" == "gcp" ]]; then
+            echo '${{ secrets.GCP_SA_KEY }}' | base64 -d > gcp-key.json
+            gcloud auth activate-service-account --key-file=gcp-key.json
+            gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} \
+              --zone ${{ env.GCP_REGION }} \
+              --project ${{ secrets.GCP_PROJECT_ID }}
+          
+          # Azure AKS
+          elif [[ "${{ secrets.DEPLOY_PROVIDER }}" == "azure" ]]; then
+            az login --service-principal \
+              -u ${{ secrets.AZURE_CLIENT_ID }} \
+              -p ${{ secrets.AZURE_CLIENT_SECRET }} \
+              --tenant ${{ secrets.AZURE_TENANT_ID }}
+            az aks get-credentials \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --name ${{ secrets.AKS_CLUSTER_NAME }}
+          fi
+      
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'latest'
+      
+      - name: Deploy with Helm
+        run: |
+          # Add helm repo if needed
+          # helm repo add myrepo https://charts.example.com
+          # helm repo update
+          
+          # Deploy or upgrade
+          helm upgrade --install enterprise-auth ./k8s/helm \
+            --namespace ${{ needs.setup.outputs.environment }} \
+            --create-namespace \
+            --set image.tag=${{ needs.setup.outputs.version }} \
+            --set environment=${{ needs.setup.outputs.environment }} \
+            --values ./k8s/helm/values.${{ needs.setup.outputs.environment }}.yaml \
+            --wait \
+            --timeout 10m
+      
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/backend -n ${{ needs.setup.outputs.environment }}
+          kubectl rollout status deployment/frontend -n ${{ needs.setup.outputs.environment }}
+          
+          # Run smoke tests
+          kubectl run smoke-test --image=curlimages/curl:latest --rm -i --restart=Never -- \
+            curl -f http://backend-service.${{ needs.setup.outputs.environment }}.svc.cluster.local:8000/health
+
+  # ==============================================================================
+  # Deploy to Docker Swarm / VPS
+  # ==============================================================================
+  deploy-docker:
+    name: Deploy to Docker
+    runs-on: ubuntu-latest
+    needs: setup
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    environment: ${{ needs.setup.outputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            cd /opt/enterprise-auth
+            
+            # Pull latest code
+            git pull origin ${{ github.ref_name }}
+            
+            # Update environment
+            cp .env.${{ needs.setup.outputs.environment }} .env
+            
+            # Pull latest images
+            docker-compose -f docker-compose.${{ needs.setup.outputs.environment }}.yml pull
+            
+            # Deploy with zero downtime
+            docker-compose -f docker-compose.${{ needs.setup.outputs.environment }}.yml up -d --no-deps --build backend
+            docker-compose -f docker-compose.${{ needs.setup.outputs.environment }}.yml up -d --no-deps --build frontend
+            
+            # Run migrations
+            docker-compose -f docker-compose.${{ needs.setup.outputs.environment }}.yml exec -T backend alembic upgrade head
+            
+            # Health check
+            sleep 10
+            curl -f http://localhost:8000/health || exit 1
+            curl -f http://localhost:3000 || exit 1
+            
+            # Clean up old images
+            docker image prune -f
+
+  # ==============================================================================
+  # Deploy to Serverless (Vercel/Netlify)
+  # ==============================================================================
+  deploy-serverless:
+    name: Deploy to Serverless
+    runs-on: ubuntu-latest
+    needs: setup
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && needs.setup.outputs.environment != 'development'
+    environment: ${{ needs.setup.outputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Deploy Frontend to Vercel
+        run: |
+          npm install -g vercel
+          cd frontend
+          
+          if [[ "${{ needs.setup.outputs.environment }}" == "production" ]]; then
+            vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
+          else
+            vercel --token=${{ secrets.VERCEL_TOKEN }}
+          fi
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      
+      - name: Deploy Backend to AWS Lambda
+        if: secrets.DEPLOY_BACKEND_SERVERLESS == 'true'
+        run: |
+          npm install -g serverless
+          cd backend
+          
+          # Install serverless plugins
+          npm install --save-dev serverless-python-requirements serverless-wsgi
+          
+          # Deploy
+          serverless deploy --stage ${{ needs.setup.outputs.environment }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  # ==============================================================================
+  # Database Migrations
+  # ==============================================================================
+  database-migration:
+    name: Run Database Migrations
+    runs-on: ubuntu-latest
+    needs: [setup, deploy-kubernetes]
+    environment: ${{ needs.setup.outputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install alembic psycopg2-binary
+      
+      - name: Run migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          cd backend
+          alembic upgrade head
+      
+      - name: Verify migration
+        run: |
+          cd backend
+          alembic current
+
+  # ==============================================================================
+  # Post-Deployment Tests
+  # ==============================================================================
+  post-deployment-tests:
+    name: Post-Deployment Tests
+    runs-on: ubuntu-latest
+    needs: [setup, deploy-kubernetes, deploy-docker, deploy-serverless]
+    if: always() && (needs.deploy-kubernetes.result == 'success' || needs.deploy-docker.result == 'success' || needs.deploy-serverless.result == 'success')
+    environment: ${{ needs.setup.outputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run smoke tests
+        run: |
+          # API Health Check
+          curl -f ${{ secrets.API_URL }}/health || exit 1
+          
+          # Frontend Health Check
+          curl -f ${{ secrets.FRONTEND_URL }} || exit 1
+          
+          # API Version Check
+          API_VERSION=$(curl -s ${{ secrets.API_URL }}/version | jq -r '.version')
+          echo "Deployed API version: $API_VERSION"
+      
+      - name: Run integration tests
+        run: |
+          npm install -g newman
+          
+          # Run Postman collection if exists
+          if [ -f tests/postman/collection.json ]; then
+            newman run tests/postman/collection.json \
+              --environment tests/postman/environment.${{ needs.setup.outputs.environment }}.json \
+              --reporters cli,json \
+              --reporter-json-export newman-results.json
+          fi
+      
+      - name: Run security scan
+        run: |
+          # OWASP ZAP Scan
+          docker run --rm owasp/zap2docker-stable zap-baseline.py \
+            -t ${{ secrets.FRONTEND_URL }} \
+            -r zap-report.html \
+            -I
+        continue-on-error: true
+      
+      - name: Performance test
+        run: |
+          # Quick performance check with K6
+          docker run --rm grafana/k6 run --vus 10 --duration 30s \
+            -e API_URL=${{ secrets.API_URL }} \
+            https://raw.githubusercontent.com/your-repo/tests/performance/quick-test.js
+        continue-on-error: true
+
+  # ==============================================================================
+  # Rollback on Failure
+  # ==============================================================================
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    needs: [setup, post-deployment-tests]
+    if: failure() && needs.setup.outputs.environment == 'production'
+    environment: ${{ needs.setup.outputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Rollback Kubernetes
+        if: secrets.DEPLOY_PROVIDER == 'kubernetes'
+        run: |
+          # Authenticate to cluster (same as deploy step)
+          # ...
+          
+          # Rollback to previous version
+          helm rollback enterprise-auth -n ${{ needs.setup.outputs.environment }}
+      
+      - name: Rollback Docker
+        if: secrets.DEPLOY_PROVIDER == 'docker'
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/enterprise-auth
+            
+            # Restore previous version
+            git checkout HEAD~1
+            docker-compose -f docker-compose.${{ needs.setup.outputs.environment }}.yml up -d
+      
+      - name: Notify rollback
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "⚠️ Production deployment rolled back!",
+              attachments: [{
+                color: 'warning',
+                fields: [
+                  { title: 'Environment', value: '${{ needs.setup.outputs.environment }}', short: true },
+                  { title: 'Version', value: '${{ needs.setup.outputs.version }}', short: true },
+                  { title: 'Triggered by', value: '${{ github.actor }}', short: true }
+                ]
+              }]
+            }
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ==============================================================================
+  # Notifications
+  # ==============================================================================
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [setup, post-deployment-tests]
+    if: always()
+    
+    steps:
+      - name: Notify Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ needs.post-deployment-tests.result }}
+          text: |
+            Deployment to ${{ needs.setup.outputs.environment }} ${{ needs.post-deployment-tests.result }}
+            Version: ${{ needs.setup.outputs.version }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        continue-on-error: true
+      
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') && needs.post-deployment-tests.result == 'success'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            ## 🚀 Deployment Information
+            - **Environment**: ${{ needs.setup.outputs.environment }}
+            - **Version**: ${{ needs.setup.outputs.version }}
+            - **Deployed by**: ${{ github.actor }}
+            
+            ## 📝 Changes
+            See [CHANGELOG.md](CHANGELOG.md) for details.
+          draft: false
+          prerelease: ${{ needs.setup.outputs.environment != 'production' }}
