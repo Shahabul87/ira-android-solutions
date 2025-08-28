@@ -15,7 +15,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.core.config import get_settings
 from app.core.database import close_db, init_db
-from app.core.logging import setup_logging
+from app.core.log_config import setup_logging
 from app.middleware.rate_limiter import RateLimitMiddleware
 
 # Initialize structured logging

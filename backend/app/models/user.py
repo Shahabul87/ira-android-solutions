@@ -190,7 +190,7 @@ class Role(Base):
         index=True
     )
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    is_system_role: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -300,15 +300,20 @@ class UserRole(Base):
     
     __tablename__ = "user_roles"
     
+    id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4
+    )
     user_id: Mapped[UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
-        primary_key=True
+        nullable=False
     )
     role_id: Mapped[UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("roles.id", ondelete="CASCADE"),
-        primary_key=True
+        nullable=False
     )
     
     # Audit fields

@@ -79,7 +79,7 @@ SYSTEM_ROLES = {
     "super_admin": {
         "description": "Super Administrator with full system access",
         "permissions": ["*:*"],  # All permissions
-        "is_system_role": True
+        "is_system": True
     },
     "admin": {
         "description": "Administrator with user and content management access",
@@ -92,7 +92,7 @@ SYSTEM_ROLES = {
             "system:health",
             "system:metrics"
         ],
-        "is_system_role": True
+        "is_system": True
     },
     "moderator": {
         "description": "Moderator with content management access",
@@ -101,7 +101,7 @@ SYSTEM_ROLES = {
             "content:*",
             "audit:read"
         ],
-        "is_system_role": True
+        "is_system": True
     },
     "user": {
         "description": "Regular user with basic access",
@@ -110,14 +110,14 @@ SYSTEM_ROLES = {
             "content:read",
             "content:create"
         ],
-        "is_system_role": True
+        "is_system": True
     },
     "guest": {
         "description": "Guest user with minimal access",
         "permissions": [
             "content:read"
         ],
-        "is_system_role": True
+        "is_system": True
     }
 }
 
@@ -193,7 +193,7 @@ async def create_roles(
             role = Role(
                 name=role_name,
                 description=role_config["description"],
-                is_system_role=role_config["is_system_role"]
+                is_system=role_config["is_system"]
             )
             session.add(role)
             await session.flush()
@@ -208,7 +208,7 @@ async def create_roles(
         role_permissions = role_config["permissions"]
         
         # Clear existing permissions for system roles (for updates)
-        if role.is_system_role:
+        if role.is_system:
             role.permissions.clear()
         
         # Add permissions
@@ -259,7 +259,7 @@ async def create_admin_user(session: AsyncSession, roles: dict[str, Role]) -> Us
         # Create admin user
         admin_user = User(
             email=admin_email,
-            password_hash=pwd_context.hash(admin_password),
+            hashed_password=pwd_context.hash(admin_password),
             first_name="System",
             last_name="Administrator",
             is_active=True,
@@ -329,7 +329,7 @@ async def create_test_user(session: AsyncSession, roles: dict[str, Role]) -> Use
         # Create test user
         test_user = User(
             email=user_email,
-            password_hash=pwd_context.hash(user_password),
+            hashed_password=pwd_context.hash(user_password),
             first_name="Test",
             last_name="User",
             is_active=True,
