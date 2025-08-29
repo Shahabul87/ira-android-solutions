@@ -15,14 +15,13 @@ import { useAuthForm, validationRules, isFormValid } from '@/hooks/use-auth-form
 import { Loader2 } from 'lucide-react';
 import OAuthProviders from './oauth-providers';
 import { TwoFactorVerify } from './two-factor-verify';
-import AuthAPI from '@/lib/auth-api';
 
 interface LoginFormProps {
   onSuccess?: () => void;
 }
 
 export function LoginForm({ onSuccess }: LoginFormProps): JSX.Element {
-  const { isLoading } = useAuth();
+  const { login, isLoading } = useAuth();
   const router = useRouter();
   const [tempToken, setTempToken] = useState<string | null>(null);
   const [show2FA, setShow2FA] = useState(false);
@@ -44,31 +43,23 @@ export function LoginForm({ onSuccess }: LoginFormProps): JSX.Element {
 
   const onSubmit = handleSubmit(async (data: LoginFormData): Promise<boolean> => {
     try {
-      const response = await AuthAPI.login({
+      // Use auth context login which handles token storage
+      const success = await login({
         email: data.email,
         password: data.password,
       });
 
-      if (response.success && response.data) {
-        if (response.data.requires_2fa && response.data.temp_token) {
-          // 2FA required - show verification component
-          setTempToken(response.data.temp_token);
-          setShow2FA(true);
-          return false; // Prevent form success handler
-        } else if (response.data.access_token && response.data.refresh_token) {
-          // Standard login success - tokens received
-          if (onSuccess) {
-            onSuccess();
-          } else {
-            router.push('/dashboard');
-          }
-          return true;
+      if (success) {
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          router.push('/dashboard');
         }
-      } else if (response.error) {
-        setError(response.error.message || 'Login failed');
+        return true;
+      } else {
+        setError('Invalid email or password');
+        return false;
       }
-      
-      return false;
     } catch {
       setError('An error occurred during login');
       return false;

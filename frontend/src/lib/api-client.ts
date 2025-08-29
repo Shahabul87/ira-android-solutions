@@ -93,17 +93,54 @@ class ApiClient {
     }
 
     try {
+      console.log(`API Client: ${method} ${finalUrl}`);
       const response = await fetch(finalUrl, {
         ...config,
         signal: AbortSignal.timeout(this.timeout),
       });
 
+      console.log(`API Client: Response status ${response.status}`);
       let responseData: ApiResponse<T>;
 
       // Handle non-JSON responses
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
-        responseData = await response.json();
+        const jsonData = await response.json();
+        console.log('API Client: Response data:', jsonData);
+        
+        // If response is OK, wrap the data in success format
+        if (response.ok) {
+          // Check if it's already in ApiResponse format
+          if ('success' in jsonData || 'error' in jsonData) {
+            responseData = jsonData;
+          } else {
+            // Wrap raw data in success response
+            responseData = {
+              success: true,
+              data: jsonData,
+            };
+          }
+        } else {
+          // Error response - check if it has a detail field (FastAPI error format)
+          if ('detail' in jsonData) {
+            responseData = {
+              success: false,
+              error: {
+                code: `HTTP_${response.status}`,
+                message: jsonData.detail || `Request failed with status ${response.status}`,
+              },
+            };
+          } else {
+            responseData = {
+              success: false,
+              error: {
+                code: `HTTP_${response.status}`,
+                message: `Request failed with status ${response.status}`,
+                details: jsonData,
+              },
+            };
+          }
+        }
       } else {
         // Handle non-JSON responses (like plain text errors)
         const text = await response.text();
@@ -120,18 +157,6 @@ class ApiClient {
             },
           };
         }
-      }
-
-      // Handle HTTP error status codes
-      if (!response.ok && responseData.success !== false) {
-        return {
-          success: false,
-          error: {
-            code: `HTTP_${response.status}`,
-            message: `Request failed with status ${response.status}`,
-            details: { status: response.status, statusText: response.statusText },
-          },
-        };
       }
 
       return responseData;
