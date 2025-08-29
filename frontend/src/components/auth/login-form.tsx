@@ -49,8 +49,13 @@ export function LoginForm({ onSuccess }: LoginFormProps): JSX.Element {
         password: data.password,
       });
 
-      if (response.success) {
-        if (response.data?.access_token && response.data?.refresh_token) {
+      if (response.success && response.data) {
+        if (response.data.requires_2fa && response.data.temp_token) {
+          // 2FA required - show verification component
+          setTempToken(response.data.temp_token);
+          setShow2FA(true);
+          return false; // Prevent form success handler
+        } else if (response.data.access_token && response.data.refresh_token) {
           // Standard login success - tokens received
           if (onSuccess) {
             onSuccess();
@@ -58,12 +63,6 @@ export function LoginForm({ onSuccess }: LoginFormProps): JSX.Element {
             router.push('/dashboard');
           }
           return true;
-        } else if (response.data && 'requires_2fa' in response.data && 'temp_token' in response.data) {
-          // 2FA required - show verification component
-          const twoFAData = response.data as { requires_2fa: boolean; temp_token: string };
-          setTempToken(twoFAData.temp_token);
-          setShow2FA(true);
-          return false; // Prevent form success handler
         }
       } else if (response.error) {
         setError(response.error.message || 'Login failed');

@@ -170,14 +170,20 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
       const response = await AuthAPI.login(credentials);
       
       if (response.success && response.data) {
-        // Get user data after successful login
-        const userResponse = await AuthAPI.getCurrentUser();
+        const loginData = response.data;
         
-        if (userResponse.success && userResponse.data) {
-          storeAuthData(userResponse.data, response.data);
-          await loadUserPermissions();
-          return true;
-        }
+        // Extract token pair from login response
+        const tokenPair: TokenPair = {
+          access_token: loginData.access_token,
+          refresh_token: loginData.refresh_token,
+          token_type: loginData.token_type,
+          expires_in: loginData.expires_in,
+        };
+        
+        // Store user and token data
+        storeAuthData(loginData.user, tokenPair);
+        await loadUserPermissions();
+        return true;
       }
       
       return false;

@@ -5,6 +5,7 @@ import {
   User,
   TokenPair,
   LoginRequest,
+  LoginResponse,
   RegisterRequest,
   RefreshTokenRequest,
   ChangePasswordRequest,
@@ -20,8 +21,8 @@ export class AuthAPI {
   }
 
   // User login
-  static async login(credentials: LoginRequest): Promise<ApiResponse<TokenPair>> {
-    return apiClient.post<TokenPair>('/api/v1/auth/login', credentials);
+  static async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
+    return apiClient.post<LoginResponse>('/api/v1/auth/login', credentials);
   }
 
   // Refresh access token
