@@ -165,15 +165,12 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   // Login function
   const login = useCallback(async (credentials: LoginRequest): Promise<boolean> => {
     setIsLoading(true);
-    console.log('Auth context: Starting login process');
     
     try {
       const response = await AuthAPI.login(credentials);
-      console.log('Auth context: Login API response:', response);
       
       if (response.success && response.data) {
         const loginData = response.data;
-        console.log('Auth context: Login successful, storing data');
         
         // Extract token pair from login response
         const tokenPair: TokenPair = {
@@ -186,15 +183,12 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
         // Store user and token data
         storeAuthData(loginData.user, tokenPair);
         await loadUserPermissions();
-        console.log('Auth context: Login complete, returning true');
         return true;
       }
       
-      console.log('Auth context: Login failed - no data in response');
       return false;
-    } catch (error) {
+    } catch {
       // Login failed
-      console.error('Auth context: Login error:', error);
       return false;
     } finally {
       setIsLoading(false);

@@ -5,13 +5,20 @@ Handles user authentication including login, registration,
 token refresh, password reset, and OAuth flows.
 """
 
-from typing import Optional
+from typing import List, Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
+from app.core.security import verify_token
+from app.dependencies.auth import get_current_user
+from app.models.user import User
+
+bearer_scheme = HTTPBearer()
 from app.services.auth_service import (
     AccountLockedError,
     AuthService,
@@ -492,6 +499,94 @@ async def resend_verification(
     
     # Always return success for security reasons
     return MessageResponse(message="If an account with that email exists, a verification email has been sent.")
+
+
+@router.get("/permissions", response_model=List[str])
+async def get_user_permissions(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db_session)
+) -> List[str]:
+    """
+    Get current user's permissions.
+    
+    Returns a list of permission strings in format "resource:action".
+    For development, this endpoint doesn't require email verification.
+    
+    Args:
+        credentials: Bearer token credentials
+        db: Database session
+        
+    Returns:
+        List[str]: List of permission strings
+    """
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+    
+    try:
+        # Verify and decode token
+        token_data = verify_token(credentials.credentials, "access")
+        
+        if not token_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired token"
+            )
+        
+        # Get user from database
+        stmt = select(User).where(User.id == token_data.sub)
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found"
+            )
+        
+        # Check if user is active (but skip email verification for development)
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Account is not active"
+            )
+        
+        # Default permissions for all authenticated users
+        permissions = ['profile:read', 'profile:write']
+        
+        # Add role-based permissions if roles exist
+        if token_data.roles:
+            for role_name in token_data.roles:
+                if role_name in ['admin', 'super_admin']:
+                    permissions.extend([
+                        'users:read',
+                        'users:write',
+                        'users:delete',
+                        'admin:access',
+                        'roles:manage'
+                    ])
+                elif role_name == 'moderator':
+                    permissions.extend([
+                        'users:read',
+                        'content:manage'
+                    ])
+                elif role_name == 'user':
+                    # User role gets default permissions (already added above)
+                    pass
+        
+        # Remove duplicates and return
+        return list(set(permissions))
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to get permissions", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve permissions"
+        )
 
 
 # OAuth endpoints will be implemented in separate modules

@@ -93,20 +93,17 @@ class ApiClient {
     }
 
     try {
-      console.log(`API Client: ${method} ${finalUrl}`);
       const response = await fetch(finalUrl, {
         ...config,
         signal: AbortSignal.timeout(this.timeout),
       });
 
-      console.log(`API Client: Response status ${response.status}`);
       let responseData: ApiResponse<T>;
 
       // Handle non-JSON responses
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
         const jsonData = await response.json();
-        console.log('API Client: Response data:', jsonData);
         
         // If response is OK, wrap the data in success format
         if (response.ok) {
