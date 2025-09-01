@@ -271,3 +271,4 @@ export const AnimatedCounter = ({ to, duration = 2, className = '' }: CounterPro
     </motion.span>
   );
 };
+

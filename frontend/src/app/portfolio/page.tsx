@@ -152,11 +152,11 @@ export default function PortfolioPage(): JSX.Element {
       <Header />
       
       {/* Hero Section */}
-      <section className='bg-gradient-to-br from-green-50 via-white to-green-50 pt-24 pb-12 animate-fadeIn'>
+      <section className='bg-gradient-to-br from-green-50 via-white to-green-50 pt-24 pb-12'>
         <div className='container mx-auto px-4'>
           <FadeInUp>
           <div className='max-w-4xl mx-auto text-center'>
-            <h1 className='text-4xl md:text-5xl font-bold text-gray-900 mb-6 animate-slideDown'>
+            <h1 className='text-4xl md:text-5xl font-bold text-gray-900 mb-6'>
               আমাদের পোর্টফোলিও
             </h1>
             <p className='text-xl text-gray-600 mb-8'>
@@ -167,16 +167,16 @@ export default function PortfolioPage(): JSX.Element {
             <StaggerContainer className='flex flex-wrap gap-2 justify-center mt-8'>
               {categories.map((category) => (
                 <StaggerItem key={category}>
-                <Button
-                  variant={selectedCategory === category ? 'default' : 'outline'}
-                  size='sm'
-                  onClick={() => setSelectedCategory(category)}
-                  className={selectedCategory === category 
-                    ? 'bg-green-600 hover:bg-green-700' 
-                    : 'border-green-600 text-green-600 hover:bg-green-50'}
-                >
-                  {category}
-                </Button>
+                  <Button
+                    variant={selectedCategory === category ? 'default' : 'outline'}
+                    size='sm'
+                    onClick={() => setSelectedCategory(category)}
+                    className={selectedCategory === category 
+                      ? 'bg-green-600 hover:bg-green-700' 
+                      : 'border-green-600 text-green-600 hover:bg-green-50'}
+                  >
+                    {category}
+                  </Button>
                 </StaggerItem>
               ))}
             </StaggerContainer>
@@ -191,16 +191,16 @@ export default function PortfolioPage(): JSX.Element {
           <StaggerContainer className='grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto'>
             {filteredProjects.map((project) => (
               <StaggerItem key={project.id}>
-              <HoverScale>
-              <Card className='hover:shadow-2xl transition-all duration-300 overflow-hidden group h-full'>
-                <div className='aspect-video bg-gradient-to-br from-green-100 to-green-200 relative overflow-hidden'>
-                  <div className='absolute inset-0 flex items-center justify-center'>
-                    <div className='text-center'>
-                      <div className='text-6xl mb-2'>📱</div>
-                      <Badge className='bg-green-600'>{project.category}</Badge>
+                <HoverScale>
+                  <Card className='hover:shadow-2xl transition-all duration-300 overflow-hidden group h-full'>
+                    <div className='aspect-video bg-gradient-to-br from-green-100 to-green-200 relative overflow-hidden'>
+                      <div className='absolute inset-0 flex items-center justify-center'>
+                        <div className='text-center'>
+                          <div className='text-6xl mb-2'>📱</div>
+                          <Badge className='bg-green-600'>{project.category}</Badge>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
                 
                 <CardHeader>
                   <div className='flex justify-between items-start mb-2'>
@@ -273,7 +273,7 @@ export default function PortfolioPage(): JSX.Element {
                   </div>
                 </CardContent>
               </Card>
-              </HoverScale>
+                </HoverScale>
               </StaggerItem>
             ))}
           </StaggerContainer>
