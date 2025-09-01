@@ -1,0 +1,542 @@
+// This is your Prisma schema file for Project Management System
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USER & AUTH ====================
+
+model User {
+  id                String             @id @default(cuid())
+  email             String             @unique
+  name              String
+  password          String
+  role              UserRole           @default(DEVELOPER)
+  department        String?
+  skills            Json?              // ["Kotlin", "Java", "Flutter", etc.]
+  avatarUrl         String?
+  phone             String?
+  hourlyRate        Decimal?           @db.Decimal(10, 2)
+  availabilityStatus AvailabilityStatus @default(AVAILABLE)
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  // Relations
+  projectAssignments ProjectAssignment[]
+  tasksAssigned      Task[]             @relation("AssignedTasks")
+  tasksReported      Task[]             @relation("ReportedTasks")
+  timeLogs           TimeLog[]
+  comments           TaskComment[]
+  documents          Document[]
+  notifications      Notification[]
+  activities         ActivityLog[]
+}
+
+enum UserRole {
+  ADMIN
+  PROJECT_MANAGER
+  TECH_LEAD
+  SENIOR_DEV
+  JUNIOR_DEV
+  DESIGNER
+  QA
+  DEVOPS
+  CLIENT
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  BUSY
+  ON_LEAVE
+}
+
+// ==================== CLIENT ====================
+
+model Client {
+  id            String       @id @default(cuid())
+  companyName   String
+  contactPerson String?
+  email         String       @unique
+  phone         String?
+  address       String?
+  country       String?
+  timezone      String?
+  website       String?
+  industry      String?
+  status        ClientStatus @default(PROSPECT)
+  notes         String?      @db.Text
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relations
+  projects      Project[]
+  invoices      Invoice[]
+  feedback      ClientFeedback[]
+}
+
+enum ClientStatus {
+  PROSPECT
+  ACTIVE
+  INACTIVE
+}
+
+// ==================== PROJECT ====================
+
+model Project {
+  id             String        @id @default(cuid())
+  clientId       String
+  name           String
+  code           String        @unique // e.g., 'IRA-2024-001'
+  description    String?       @db.Text
+  projectType    ProjectType
+  status         ProjectStatus @default(PROPOSAL)
+  priority       Priority      @default(MEDIUM)
+  startDate      DateTime?
+  endDate        DateTime?
+  actualEndDate  DateTime?
+  budget         Decimal?      @db.Decimal(12, 2)
+  spentAmount    Decimal?      @db.Decimal(12, 2)
+  currency       String        @default("BDT")
+  repositoryUrl  String?
+  stagingUrl     String?
+  productionUrl  String?
+  slackChannel   String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Relations
+  client         Client              @relation(fields: [clientId], references: [id])
+  assignments    ProjectAssignment[]
+  sprints        Sprint[]
+  tasks          Task[]
+  documents      Document[]
+  milestones     Milestone[]
+  invoices       Invoice[]
+  risks          Risk[]
+  activities     ActivityLog[]
+}
+
+enum ProjectType {
+  ANDROID_NATIVE
+  FLUTTER
+  REACT_NATIVE
+  WEB_APP
+  HYBRID
+}
+
+enum ProjectStatus {
+  PROPOSAL
+  PLANNING
+  IN_PROGRESS
+  TESTING
+  REVIEW
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// ==================== PROJECT ASSIGNMENT ====================
+
+model ProjectAssignment {
+  id                   String               @id @default(cuid())
+  projectId            String
+  userId               String
+  roleInProject        String
+  allocationPercentage Int                  // 0-100%
+  startDate            DateTime
+  endDate              DateTime?
+  status               AssignmentStatus     @default(ACTIVE)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  // Relations
+  project              Project              @relation(fields: [projectId], references: [id])
+  user                 User                 @relation(fields: [userId], references: [id])
+
+  @@unique([projectId, userId, startDate])
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  COMPLETED
+  REMOVED
+}
+
+// ==================== SPRINT ====================
+
+model Sprint {
+  id           String       @id @default(cuid())
+  projectId    String
+  sprintNumber Int
+  name         String
+  goal         String?      @db.Text
+  startDate    DateTime
+  endDate      DateTime
+  status       SprintStatus @default(PLANNING)
+  velocity     Int?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  project      Project      @relation(fields: [projectId], references: [id])
+  tasks        Task[]
+
+  @@unique([projectId, sprintNumber])
+}
+
+enum SprintStatus {
+  PLANNING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+// ==================== TASK ====================
+
+model Task {
+  id             String     @id @default(cuid())
+  projectId      String
+  sprintId       String?
+  parentTaskId   String?
+  title          String
+  description    String?    @db.Text
+  taskType       TaskType
+  status         TaskStatus @default(BACKLOG)
+  priority       Priority   @default(MEDIUM)
+  assignedToId   String?
+  reporterId     String
+  storyPoints    Int?
+  estimatedHours Decimal?   @db.Decimal(5, 2)
+  actualHours    Decimal?   @db.Decimal(5, 2)
+  dueDate        DateTime?
+  completedDate  DateTime?
+  labels         Json?      // ["frontend", "backend", "urgent", etc.]
+  attachments    Json?
+  taskNumber     Int        // Auto-incrementing number per project
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  // Relations
+  project        Project       @relation(fields: [projectId], references: [id])
+  sprint         Sprint?       @relation(fields: [sprintId], references: [id])
+  parentTask     Task?         @relation("TaskSubtasks", fields: [parentTaskId], references: [id])
+  subtasks       Task[]        @relation("TaskSubtasks")
+  assignedTo     User?         @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  reporter       User          @relation("ReportedTasks", fields: [reporterId], references: [id])
+  timeLogs       TimeLog[]
+  comments       TaskComment[]
+  dependencies   TaskDependency[] @relation("DependentTask")
+  dependents     TaskDependency[] @relation("DependsOnTask")
+
+  @@unique([projectId, taskNumber])
+}
+
+enum TaskType {
+  FEATURE
+  BUG
+  IMPROVEMENT
+  TASK
+  EPIC
+  STORY
+  SUBTASK
+}
+
+enum TaskStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  TESTING
+  DONE
+  BLOCKED
+  CANCELLED
+}
+
+// ==================== TASK DEPENDENCY ====================
+
+model TaskDependency {
+  id              String   @id @default(cuid())
+  dependentTaskId String
+  dependsOnTaskId String
+  createdAt       DateTime @default(now())
+
+  // Relations
+  dependentTask   Task     @relation("DependentTask", fields: [dependentTaskId], references: [id])
+  dependsOnTask   Task     @relation("DependsOnTask", fields: [dependsOnTaskId], references: [id])
+
+  @@unique([dependentTaskId, dependsOnTaskId])
+}
+
+// ==================== TIME TRACKING ====================
+
+model TimeLog {
+  id          String   @id @default(cuid())
+  taskId      String
+  userId      String
+  hours       Decimal  @db.Decimal(5, 2)
+  date        DateTime @db.Date
+  description String?  @db.Text
+  billable    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  task        Task     @relation(fields: [taskId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+// ==================== COMMENTS ====================
+
+model TaskComment {
+  id          String   @id @default(cuid())
+  taskId      String
+  userId      String
+  comment     String   @db.Text
+  mentions    Json?    // ["@user_id1", "@user_id2"]
+  attachments Json?
+  isEdited    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  task        Task     @relation(fields: [taskId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+// ==================== DOCUMENTS ====================
+
+model Document {
+  id           String       @id @default(cuid())
+  projectId    String
+  uploadedById String
+  documentType DocumentType
+  title        String
+  description  String?
+  fileUrl      String
+  fileSize     Int
+  mimeType     String
+  version      String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  project      Project      @relation(fields: [projectId], references: [id])
+  uploadedBy   User         @relation(fields: [uploadedById], references: [id])
+}
+
+enum DocumentType {
+  REQUIREMENT
+  DESIGN
+  CONTRACT
+  INVOICE
+  REPORT
+  PRESENTATION
+  OTHER
+}
+
+// ==================== MILESTONES ====================
+
+model Milestone {
+  id            String          @id @default(cuid())
+  projectId     String
+  name          String
+  description   String?         @db.Text
+  dueDate       DateTime
+  completedDate DateTime?
+  paymentAmount Decimal?        @db.Decimal(12, 2)
+  status        MilestoneStatus @default(PENDING)
+  deliverables  Json?           // List of deliverables
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  project       Project          @relation(fields: [projectId], references: [id])
+  invoices      Invoice[]
+  feedback      ClientFeedback[]
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  APPROVED
+  REJECTED
+}
+
+// ==================== CLIENT FEEDBACK ====================
+
+model ClientFeedback {
+  id           String       @id @default(cuid())
+  projectId    String
+  milestoneId  String?
+  clientId     String
+  feedbackType FeedbackType
+  message      String       @db.Text
+  attachments  Json?
+  status       FeedbackStatus @default(PENDING)
+  resolvedAt   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  project      Project      @relation(fields: [projectId], references: [id])
+  milestone    Milestone?   @relation(fields: [milestoneId], references: [id])
+  client       Client       @relation(fields: [clientId], references: [id])
+}
+
+enum FeedbackType {
+  APPROVAL
+  REVISION
+  COMMENT
+  ISSUE
+}
+
+enum FeedbackStatus {
+  PENDING
+  IN_REVIEW
+  ADDRESSED
+  APPROVED
+  REJECTED
+}
+
+// ==================== INVOICES ====================
+
+model Invoice {
+  id            String        @id @default(cuid())
+  projectId     String
+  clientId      String
+  milestoneId   String?
+  invoiceNumber String        @unique
+  amount        Decimal       @db.Decimal(12, 2)
+  taxAmount     Decimal       @db.Decimal(10, 2)
+  totalAmount   Decimal       @db.Decimal(12, 2)
+  currency      String        @default("BDT")
+  status        InvoiceStatus @default(DRAFT)
+  dueDate       DateTime
+  paidDate      DateTime?
+  paymentMethod String?
+  notes         String?       @db.Text
+  items         Json          // Invoice line items
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  project       Project       @relation(fields: [projectId], references: [id])
+  client        Client        @relation(fields: [clientId], references: [id])
+  milestone     Milestone?    @relation(fields: [milestoneId], references: [id])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  VIEWED
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  CANCELLED
+}
+
+// ==================== RISK MANAGEMENT ====================
+
+model Risk {
+  id          String       @id @default(cuid())
+  projectId   String
+  title       String
+  description String       @db.Text
+  category    RiskCategory
+  probability RiskLevel
+  impact      RiskLevel
+  mitigation  String?      @db.Text
+  status      RiskStatus   @default(IDENTIFIED)
+  owner       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  project     Project      @relation(fields: [projectId], references: [id])
+}
+
+enum RiskCategory {
+  TECHNICAL
+  SCHEDULE
+  BUDGET
+  RESOURCE
+  EXTERNAL
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RiskStatus {
+  IDENTIFIED
+  ANALYZING
+  MITIGATING
+  RESOLVED
+  ACCEPTED
+}
+
+// ==================== NOTIFICATIONS ====================
+
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String
+  type       NotificationType
+  title      String
+  message    String           @db.Text
+  entityType String?          // 'task', 'project', 'invoice', etc.
+  entityId   String?
+  isRead     Boolean          @default(false)
+  readAt     DateTime?
+  createdAt  DateTime         @default(now())
+
+  // Relations
+  user       User             @relation(fields: [userId], references: [id])
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_UPDATED
+  COMMENT_MENTION
+  DEADLINE_APPROACHING
+  STATUS_CHANGED
+  PAYMENT_RECEIVED
+  PROJECT_UPDATE
+  MILESTONE_COMPLETED
+}
+
+// ==================== ACTIVITY LOG ====================
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  projectId  String?
+  userId     String
+  action     String
+  entityType String   // 'task', 'project', 'document', etc.
+  entityId   String
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  // Relations
+  project    Project? @relation(fields: [projectId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -9,7 +9,7 @@ import { AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import AuthAPI from '@/lib/auth-api';
 
-export default function OAuthCallbackPage(): JSX.Element {
+function OAuthCallbackContent(): JSX.Element {
   const router = useRouter();
   const searchParams = useSearchParams();
   useAuth(); // Initialize auth context
@@ -129,5 +129,26 @@ export default function OAuthCallbackPage(): JSX.Element {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function OAuthCallbackPage(): JSX.Element {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>OAuth Authentication</CardTitle>
+            <CardDescription>Please wait while we complete your authentication...</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center space-y-4">
+            <Icons.spinner className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <OAuthCallbackContent />
+    </Suspense>
   );
 }

@@ -1,18 +1,29 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Noto_Sans_Bengali, Inter } from 'next/font/google';
 import './globals.css';
+import './animations.css';
 import { AuthProvider } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
+import { translations } from '@/lib/translations';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ 
+  subsets: ['latin'],
+  variable: '--font-inter',
+});
+
+const notoBengali = Noto_Sans_Bengali({
+  subsets: ['bengali'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-noto-bengali',
+});
 
 export const metadata: Metadata = {
-  title: 'Enterprise Auth Template',
-  description: 'A comprehensive authentication template for AI projects',
-  keywords: ['authentication', 'enterprise', 'AI', 'template', 'Next.js', 'FastAPI'],
-  authors: [{ name: 'Enterprise Auth Template' }],
-  creator: 'Enterprise Auth Template',
-  publisher: 'Enterprise Auth Template',
+  title: `${translations.company.name} - ${translations.company.tagline}`,
+  description: 'এন্টারপ্রাইজ লেভেল অ্যান্ড্রয়েড অ্যাপ ডেভেলপমেন্ট কোম্পানি। উচ্চ মানের, স্কেলেবল এবং ইউজার-ফ্রেন্ডলি অ্যান্ড্রয়েড অ্যাপ্লিকেশন তৈরি করি।',
+  keywords: ['android app development', 'অ্যান্ড্রয়েড অ্যাপ', 'mobile app', 'kotlin', 'java', 'bangladesh', 'dhaka'],
+  authors: [{ name: translations.company.name }],
+  creator: translations.company.name,
+  publisher: translations.company.name,
   robots: {
     index: true,
     follow: true,
@@ -23,16 +34,16 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    locale: 'en_US',
-    url: 'https://enterprise-auth-template.com',
-    title: 'Enterprise Auth Template',
-    description: 'A comprehensive authentication template for AI projects',
-    siteName: 'Enterprise Auth Template',
+    locale: 'bn_BD',
+    url: 'https://ira-android.com',
+    title: translations.company.name,
+    description: translations.company.tagline,
+    siteName: translations.company.name,
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Enterprise Auth Template',
-    description: 'A comprehensive authentication template for AI projects',
+    title: translations.company.name,
+    description: translations.company.tagline,
   },
 };
 
@@ -48,8 +59,12 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps): JSX.Element {
   return (
-    <html lang='en' suppressHydrationWarning>
-      <body className={cn(inter.className, 'min-h-screen bg-background antialiased')}>
+    <html lang='bn' suppressHydrationWarning>
+      <body className={cn(
+        inter.variable,
+        notoBengali.variable,
+        'font-bengali min-h-screen bg-background antialiased'
+      )}>
         <AuthProvider>
           <main className='relative flex min-h-screen flex-col'>
             {children}

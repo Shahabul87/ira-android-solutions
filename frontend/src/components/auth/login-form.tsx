@@ -15,6 +15,7 @@ import { useAuthForm, validationRules, isFormValid } from '@/hooks/use-auth-form
 import { Loader2 } from 'lucide-react';
 import OAuthProviders from './oauth-providers';
 import { TwoFactorVerify } from './two-factor-verify';
+import { translations } from '@/lib/translations';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -57,11 +58,11 @@ export function LoginForm({ onSuccess }: LoginFormProps): JSX.Element {
         }
         return true;
       } else {
-        setError('Invalid email or password');
+        setError(translations.auth.errors.invalidCredentials);
         return false;
       }
     } catch {
-      setError('An error occurred during login');
+      setError('লগইনে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
       return false;
     }
   });
@@ -94,14 +95,14 @@ export function LoginForm({ onSuccess }: LoginFormProps): JSX.Element {
   }
 
   return (
-    <Card className='w-full max-w-md mx-auto'>
-      <CardHeader className='space-y-1'>
-        <CardTitle className='text-2xl text-center'>Welcome back</CardTitle>
-        <CardDescription className='text-center'>
-          Enter your credentials to access your account
+    <Card className='w-full max-w-md mx-auto shadow-xl border-0'>
+      <CardHeader className='space-y-1 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-t-lg'>
+        <CardTitle className='text-2xl text-center'>{translations.auth.login.title}</CardTitle>
+        <CardDescription className='text-center text-green-50'>
+          {translations.auth.login.subtitle}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className='pt-6'>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
             {error && (
@@ -116,12 +117,13 @@ export function LoginForm({ onSuccess }: LoginFormProps): JSX.Element {
               rules={validationRules.email}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email address</FormLabel>
+                  <FormLabel>{translations.auth.login.email}</FormLabel>
                   <FormControl>
                     <Input
                       type='email'
-                      placeholder='Enter your email'
+                      placeholder='আপনার ইমেইল লিখুন'
                       disabled={isLoading || isSubmitting}
+                      className='border-gray-300 focus:border-green-500'
                       {...field}
                     />
                   </FormControl>
@@ -134,19 +136,20 @@ export function LoginForm({ onSuccess }: LoginFormProps): JSX.Element {
               control={form.control}
               name='password'
               rules={{
-                required: 'Password is required',
+                required: 'পাসওয়ার্ড আবশ্যক',
                 minLength: {
                   value: 1,
-                  message: 'Password is required',
+                  message: 'পাসওয়ার্ড আবশ্যক',
                 },
               }}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>{translations.auth.login.password}</FormLabel>
                   <FormControl>
                     <PasswordInput
-                      placeholder='Enter your password'
+                      placeholder='আপনার পাসওয়ার্ড লিখুন'
                       disabled={isLoading || isSubmitting}
+                      className='border-gray-300 focus:border-green-500'
                       {...field}
                     />
                   </FormControl>
@@ -164,7 +167,7 @@ export function LoginForm({ onSuccess }: LoginFormProps): JSX.Element {
                     <input
                       id='remember'
                       type='checkbox'
-                      className='h-4 w-4 rounded border-input'
+                      className='h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500'
                       disabled={isLoading || isSubmitting}
                       checked={field.value}
                       onChange={field.onChange}
@@ -173,44 +176,53 @@ export function LoginForm({ onSuccess }: LoginFormProps): JSX.Element {
                       htmlFor='remember' 
                       className='text-sm font-normal cursor-pointer'
                     >
-                      Remember me
+                      {translations.auth.login.rememberMe}
                     </FormLabel>
                   </div>
                 )}
               />
               <Link
                 href='/auth/forgot-password'
-                className='text-sm text-primary hover:underline'
+                className='text-sm text-green-600 hover:text-green-700 hover:underline'
               >
-                Forgot password?
+                {translations.auth.login.forgotPassword}
               </Link>
             </div>
 
             <Button
               type='submit'
-              className='w-full'
+              className='w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white'
               disabled={!formIsValid || isLoading || isSubmitting}
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                  Signing in...
+                  লগইন হচ্ছে...
                 </>
               ) : (
-                'Sign in'
+                translations.auth.login.submit
               )}
             </Button>
           </form>
         </Form>
 
-        <div className='text-center text-sm mt-4'>
-          <span className='text-muted-foreground'>Don&apos;t have an account?</span>{' '}
-          <Link href='/auth/register' className='text-primary hover:underline'>
-            Sign up
-          </Link>
+        <div className='relative my-6'>
+          <div className='absolute inset-0 flex items-center'>
+            <div className='w-full border-t border-gray-200'></div>
+          </div>
+          <div className='relative flex justify-center text-sm'>
+            <span className='bg-white px-2 text-gray-500'>{translations.auth.login.or}</span>
+          </div>
         </div>
 
-        <OAuthProviders className='mt-6' {...(onSuccess && { onSuccess })} />
+        <OAuthProviders className='mb-4' {...(onSuccess && { onSuccess })} />
+
+        <div className='text-center text-sm mt-6 pt-6 border-t border-gray-100'>
+          <span className='text-gray-600'>{translations.auth.login.noAccount}</span>{' '}
+          <Link href='/auth/register' className='text-green-600 hover:text-green-700 font-semibold hover:underline'>
+            {translations.auth.login.signUp}
+          </Link>
+        </div>
       </CardContent>
     </Card>
   );

@@ -14,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { PasswordStrengthIndicator } from '@/components/auth/password-strength-indicator';
 import { useAuthForm, validationRules, isFormValid } from '@/hooks/use-auth-form';
 import { Loader2 } from 'lucide-react';
+import { translations } from '@/lib/translations';
 
 interface RegisterFormProps {
   onSuccess?: () => void;
@@ -57,14 +58,14 @@ export function RegisterForm({ onSuccess }: RegisterFormProps): JSX.Element {
   const formIsValid = isFormValid(form, ['email', 'password', 'confirmPassword', 'first_name', 'last_name', 'terms']);
 
   return (
-    <Card className='w-full max-w-md mx-auto'>
-      <CardHeader className='space-y-1'>
-        <CardTitle className='text-2xl text-center'>Create an account</CardTitle>
-        <CardDescription className='text-center'>
-          Enter your details to get started
+    <Card className='w-full max-w-md mx-auto shadow-xl border-0'>
+      <CardHeader className='space-y-1 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-t-lg'>
+        <CardTitle className='text-2xl text-center'>{translations.auth.register.title}</CardTitle>
+        <CardDescription className='text-center text-green-50'>
+          {translations.auth.register.subtitle}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className='pt-6'>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
           {error && (
@@ -80,12 +81,13 @@ export function RegisterForm({ onSuccess }: RegisterFormProps): JSX.Element {
                 rules={validationRules.firstName}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>First name</FormLabel>
+                    <FormLabel>প্রথম নাম</FormLabel>
                     <FormControl>
                       <Input
                         type='text'
-                        placeholder='John'
+                        placeholder='রহিম'
                         disabled={isLoading || isSubmitting}
+                        className='border-gray-300 focus:border-green-500'
                         {...field}
                       />
                     </FormControl>
@@ -100,12 +102,13 @@ export function RegisterForm({ onSuccess }: RegisterFormProps): JSX.Element {
                 rules={validationRules.lastName}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last name</FormLabel>
+                    <FormLabel>শেষ নাম</FormLabel>
                     <FormControl>
                       <Input
                         type='text'
-                        placeholder='Doe'
+                        placeholder='উদ্দিন'
                         disabled={isLoading || isSubmitting}
+                        className='border-gray-300 focus:border-green-500'
                         {...field}
                       />
                     </FormControl>
@@ -121,12 +124,13 @@ export function RegisterForm({ onSuccess }: RegisterFormProps): JSX.Element {
               rules={validationRules.email}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email address</FormLabel>
+                  <FormLabel>{translations.auth.register.email}</FormLabel>
                   <FormControl>
                     <Input
                       type='email'
-                      placeholder='john@example.com'
+                      placeholder='আপনার ইমেইল ঠিকানা'
                       disabled={isLoading || isSubmitting}
+                      className='border-gray-300 focus:border-green-500'
                       {...field}
                     />
                   </FormControl>
@@ -141,16 +145,17 @@ export function RegisterForm({ onSuccess }: RegisterFormProps): JSX.Element {
               rules={validationRules.password}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>{translations.auth.register.password}</FormLabel>
                   <FormControl>
                     <PasswordInput
-                      placeholder='Create a strong password'
+                      placeholder='শক্তিশালী পাসওয়ার্ড তৈরি করুন'
                       disabled={isLoading || isSubmitting}
+                      className='border-gray-300 focus:border-green-500'
                       {...field}
                     />
                   </FormControl>
-                  <PasswordStrengthIndicator password={passwordValue} />
                   <FormMessage />
+                  {passwordValue && <PasswordStrengthIndicator password={passwordValue} />}
                 </FormItem>
               )}
             />
@@ -158,14 +163,18 @@ export function RegisterForm({ onSuccess }: RegisterFormProps): JSX.Element {
             <FormField
               control={form.control}
               name='confirmPassword'
-              rules={validationRules.confirmPassword(passwordValue)}
+              rules={{
+                required: 'পাসওয়ার্ড নিশ্চিতকরণ আবশ্যক',
+                validate: (value) => value === passwordValue || 'পাসওয়ার্ড মিলছে না'
+              }}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm password</FormLabel>
+                  <FormLabel>{translations.auth.register.confirmPassword}</FormLabel>
                   <FormControl>
                     <PasswordInput
-                      placeholder='Confirm your password'
+                      placeholder='পাসওয়ার্ড পুনরায় লিখুন'
                       disabled={isLoading || isSubmitting}
+                      className='border-gray-300 focus:border-green-500'
                       {...field}
                     />
                   </FormControl>
@@ -177,64 +186,50 @@ export function RegisterForm({ onSuccess }: RegisterFormProps): JSX.Element {
             <FormField
               control={form.control}
               name='terms'
-              rules={validationRules.terms}
+              rules={{ required: 'আপনাকে শর্তাবলী মেনে নিতে হবে' }}
               render={({ field }) => (
-                <FormItem>
-                  <div className='flex items-start space-x-2'>
-                    <FormControl>
-                      <input
-                        id='terms'
-                        type='checkbox'
-                        className='mt-1 h-4 w-4 rounded border-input'
-                        disabled={isLoading || isSubmitting}
-                        checked={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className='space-y-1'>
-                      <FormLabel 
-                        htmlFor='terms' 
-                        className='text-sm font-normal cursor-pointer leading-none'
-                      >
-                        I agree to the{' '}
-                        <Link href='/terms' className='text-primary hover:underline'>
-                          Terms of Service
-                        </Link>{' '}
-                        and{' '}
-                        <Link href='/privacy' className='text-primary hover:underline'>
-                          Privacy Policy
-                        </Link>
-                      </FormLabel>
-                      <FormMessage />
-                    </div>
-                  </div>
-                </FormItem>
+                <div className='flex items-start space-x-2'>
+                  <input
+                    id='terms'
+                    type='checkbox'
+                    className='h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500 mt-1'
+                    disabled={isLoading || isSubmitting}
+                    checked={field.value}
+                    onChange={field.onChange}
+                  />
+                  <FormLabel 
+                    htmlFor='terms' 
+                    className='text-sm font-normal cursor-pointer leading-relaxed'
+                  >
+                    {translations.auth.register.terms}
+                  </FormLabel>
+                </div>
               )}
             />
 
-          <Button
-            type='submit'
-            className='w-full'
-            disabled={!formIsValid || isLoading || isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                Creating account...
-              </>
-            ) : (
-              'Create account'
-            )}
-          </Button>
-
-          <div className='text-center text-sm mt-4'>
-            <span className='text-muted-foreground'>Already have an account?</span>{' '}
-            <Link href='/auth/login' className='text-primary hover:underline'>
-              Sign in
-            </Link>
-          </div>
+            <Button
+              type='submit'
+              className='w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white'
+              disabled={!formIsValid || isLoading || isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  নিবন্ধন হচ্ছে...
+                </>
+              ) : (
+                translations.auth.register.submit
+              )}
+            </Button>
           </form>
         </Form>
+
+        <div className='text-center text-sm mt-6 pt-6 border-t border-gray-100'>
+          <span className='text-gray-600'>{translations.auth.register.haveAccount}</span>{' '}
+          <Link href='/auth/login' className='text-green-600 hover:text-green-700 font-semibold hover:underline'>
+            {translations.auth.register.signIn}
+          </Link>
+        </div>
       </CardContent>
     </Card>
   );
